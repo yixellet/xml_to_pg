@@ -1,10 +1,10 @@
 from xml.etree.ElementTree import Element
 from typing import Union
 import re
-from shapely import Point, LineString, Polygon
+from shapely import Point, LineString, Polygon, MultiLineString, MultiPolygon, union
 
-from ..constants.msk_zones import MSK_ZONES
-from ..constants.geometry_types import GEOMETRY_TYPES
+from constants.msk_zones import MSK_ZONES
+from constants.geometry_types import GEOMETRY_TYPES
 
 class Geometry():
     """
@@ -70,8 +70,8 @@ class Geometry():
         region_code = cad_number_splitted[0]    # '30'
         # TODO: Разработать алгоритм определения МСК других субъектов
         if point:
-            east = point.x()
-            nord = point.y()
+            east = point.x
+            nord = point.y
             return region_code + '.' + str(east)[0]
         return 'no_geometry'
 
@@ -92,7 +92,7 @@ class Geometry():
         return None
 
     def extract_geometry(self, to_wgs: bool = False) -> \
-        list[dict[str, Union[QgsGeometry, None]]]:
+        list[dict[str, Union[MultiLineString, MultiPolygon, None]]]:
         """Извлекает геометрию, преобразует координаты
         
         :param to_wgs: Флаг, указывающий на необходимость преобразования
@@ -118,12 +118,12 @@ class Geometry():
             if geom_contour['crs'] not in temp_result:
                 temp_result[geom_contour['crs']] = geom_contour
             else:
-                temp_result[geom_contour['crs']]['geom'].addPartGeometry(geom_contour['geom'])
+                union(temp_result[geom_contour['crs']]['geom'], geom_contour['geom'])
         return list(temp_result.values())
 
     def extract_single_contour(self, 
                                root_element: Element = '', to_wgs: bool = False) -> \
-        dict[str, Union[str, QgsGeometry]]:
+        dict[str, Union[str, MultiLineString, MultiPolygon]]:
         """
         Извлекает геометрическую информацию из одного конкретного контура
         (элемент contour или spatial_data)
@@ -163,26 +163,18 @@ class Geometry():
                         ordinates_arr[0], 
                         self.extract_sk_id(entity_spatial))
                     if geometry_type == GEOMETRY_TYPES[1]:
-                        contour = LineString(ordinates_arr)
+                        contour = MultiLineString([LineString(ordinates_arr)])
                     if geometry_type == GEOMETRY_TYPES[2]:
-                        contour = Polygon(ordinates_arr)
+                        contour = MultiPolygon([Polygon(ordinates_arr)])
                 else:                
                     if geometry_type == GEOMETRY_TYPES[1]:
-                        contour.addPartGeometry(
-                            QgsGeometry.fromPolyline(ordinates_arr))
+                        contour = union(contour, LineString(ordinates_arr))
                     if geometry_type == GEOMETRY_TYPES[2]:
-                        contour_part = QgsGeometry.fromPolygonXY(
-                            [ordinates_arr])
-                        if se_idx == 0:
-                            contour.addPartGeometry(contour_part)
+                        contour_part = Polygon(ordinates_arr)
+                        if contour_part.within(contour):
+                            contour = union(contour, Polygon(list(reversed(ordinates_arr))))
                         else:
-                            polygon_geometry_engine = \
-                                QgsGeometry.createGeometryEngine(contour_part.constGet())
-                            polygon_geometry_engine.prepareGeometry()
-                            if polygon_geometry_engine.within(contour.constGet()):
-                                contour.addRing(list(reversed(ordinates_arr)))
-                            else:
-                                contour.addPartGeometry(contour)
+                            contour = union(contour, Polygon(ordinates_arr))
             result['geom'] = contour
             result['crs'] = msk_zone
             result['geometry_type'] = geometry_type

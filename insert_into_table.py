@@ -4,7 +4,7 @@ from constants.fields import FIELDS
 
 def insert_into_table(cur: cursor, conn: connection, 
                       object: dict, schema: str) -> None:
-    table_name = object['content'] + '__' + object['msk_zone']
+    table_name = object['content'] + '__' + object['crs']
     object_desc = FIELDS[object['content']]
     fields = []
     set_fields = []
@@ -15,15 +15,17 @@ def insert_into_table(cur: cursor, conn: connection,
     for key, value in object.items():
         if key in object_desc['fields']:
             values.append(value)
-
+    
+    print(object['geom'])
+    """
     cur.execute(
-        f"""
+        f""
         INSERT INTO {schema}.{table_name} ({','.join(fields)}) 
         VALUES ({','.join(values)}) 
         ON CONFLICT ("{object_desc['unique']}") DO UPDATE 
         SET {','.join(set_fields)}
         WHERE date_formation < EXCLUDED.date_formation;
-        """
+        ""
     )
-    conn.commit()
+    conn.commit()"""
     print('--- Таблицы заполнены ---')

@@ -3,8 +3,6 @@ from xml.etree.ElementTree import Element
 from .ParserElements import ParserElements as PE
 from .Geometry import Geometry
 
-from ..cadaster_import_utils import logMessage
-
 class Zone():
     """
     Инструмент для извлечения информации об отдельной зоне

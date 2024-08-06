@@ -60,8 +60,10 @@ class LandRecord():
             self.data['common_land_cad_number'] = None
         
         # Address location
-        self.data.update(
-            PE.parse_address(self.root_element.find('address_location')))
+        address_location = self.root_element.find('address_location')
+        if address_location:
+            self.data.update(
+                PE.parse_address(self.root_element.find('address_location')))
         
         # Contours location
         geometry = Geometry(self.root_element.find('contours_location'),
