@@ -1,4 +1,5 @@
 from psycopg import cursor, connection
+import re
 
 from constants.fields import FIELDS
 
@@ -23,16 +24,21 @@ def insert_into_table(cur: cursor, conn: connection,
             if type(value) is int or type(value) is float or value == None:
                 values_.append(str(value))
             else:
-                values_.append(f"""\'{str(value)}\'""")
-    
-    #print(object['cad_number'] or object['reg_numb_border'], object['geom'])
+                string = re.sub(r'[\'\"]', ' ', str(value))
+                values_.append(f"""\'{string}\'""")
+    """
+    print(
+        f""
+        INSERT INTO {schema}."{table_name}" as x ({','.join(fields_)}) 
+        VALUES ({','.join(values_)}) 
+        ON CONFLICT ("{object_desc['unique']}") DO NOTHING;
+        ""
+    )"""
     cur.execute(
         f"""
         INSERT INTO {schema}."{table_name}" as x ({','.join(fields_)}) 
         VALUES ({','.join(values_)}) 
-        ON CONFLICT ("{object_desc['unique']}") DO UPDATE 
-        SET {','.join(set_fields_)}
-        WHERE x.date_formation < EXCLUDED.date_formation;
+        ON CONFLICT ("{object_desc['unique']}") DO NOTHING;
         """
     )
     conn.commit()

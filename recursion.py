@@ -7,6 +7,7 @@ def recursion(cur, conn, dirPath, schema):
     content = os.listdir(dirPath)
     for item in content:
         path = os.path.join(dirPath, item)
+        #print(item)
         if os.path.isfile(path):
             if os.path.splitext(item)[1] == '.xml':
                 with open(path, encoding="utf8") as f:
@@ -23,4 +24,4 @@ def recursion(cur, conn, dirPath, schema):
                             if p.getFileType():
                                 p.parse(cur, conn, schema)
         if os.path.isdir(path):
-            recursion(path)
+            recursion(cur, conn, path, schema)

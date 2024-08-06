@@ -1,7 +1,7 @@
 from xml.etree.ElementTree import Element
 from typing import Union
 import re
-from shapely import Point, LineString, Polygon, MultiLineString, MultiPolygon, union, normalize, to_wkt, geometry
+from shapely import Point, LineString, Polygon, MultiLineString, MultiPolygon, union, normalize, to_wkt, geometry, make_valid
 
 from constants.msk_zones import MSK_ZONES
 from constants.geometry_types import GEOMETRY_TYPES
@@ -118,10 +118,11 @@ class Geometry():
             if geom_contour['crs'] not in temp_result:
                 temp_result[geom_contour['crs']] = geom_contour
             else:
-                union(temp_result[geom_contour['crs']]['geom'], geom_contour['geom'])
+                temp_result[geom_contour['crs']]['geom'].union(geom_contour['geom'])
         result = []
         for value in temp_result.values():
-            result.append({'geom': to_wkt(value['geom']), 'crs': value['crs'], 'geometry_type': value['geometry_type']})
+            result.append({'geom': to_wkt(make_valid(value['geom'])), 'crs': value['crs'], 'geometry_type': value['geometry_type']})
+        print(result)
         return result
 
     def extract_single_contour(self, 
@@ -151,24 +152,57 @@ class Geometry():
         spatials_elements = entity_spatial.find('spatials_elements')
         if spatials_elements:
             contour = None
+            shell = None
+            shell_points = None
+            holes = []
             for idx, spatial_element \
                     in enumerate(spatials_elements.findall('spatial_element')):
                 ords = spatial_element.find('ordinates')
-                shell = None
-                holes = None
                 points_arr = []
                 for ordinate in ords.findall('ordinate'):
                     nord = float(ordinate.find('x').text)
                     east = float(ordinate.find('y').text)
                     points_arr.append(Point(east, nord))
-
+                
+                if idx == 0:
+                    geometry_type = self.define_geometry_type(points_arr)
+                    msk_zone = self.define_msk_zone(
+                        points_arr[0], 
+                        self.extract_sk_id(entity_spatial))
+                
+                if geometry_type == GEOMETRY_TYPES[1]:
+                    line_part = LineString(points_arr)
+                    if idx == 0:
+                        contour = MultiLineString(line_part)
+                    else:
+                        contour.union(line_part)
+                if geometry_type == GEOMETRY_TYPES[2]:
+                    poly_part = Polygon(points_arr)
+                    if idx == 0:
+                        shell = poly_part
+                        shell_points = points_arr
+                    else:
+                        if poly_part.within(shell):
+                            holes.append(points_arr)
+                        else:
+                            spatial_element = Polygon(shell_points, holes)
+                            shell = poly_part
+                            shell_points = points_arr
+                            holes.clear()
+                            if contour == None:
+                                contour = MultiPolygon([spatial_element])
+                            else:
+                                contour.union(spatial_element)
+            if contour == None:
+                contour = MultiPolygon([shell])
+                """
                 if idx == 0:
                     geometry_type = self.define_geometry_type(points_arr)
                     msk_zone = self.define_msk_zone(
                         points_arr[0], 
                         self.extract_sk_id(entity_spatial))
                     if geometry_type == GEOMETRY_TYPES[1]:
-                        contour = MultiLineString([points_arr])
+                        contour = MultiLineString(LineString(points_arr))
                     if geometry_type == GEOMETRY_TYPES[2]:
                         shell = Polygon(points_arr)
                         contour = MultiPolygon([shell])
@@ -182,6 +216,7 @@ class Geometry():
                         else:
                             temp_poly = Polygon(shell, holes)
                             contour = normalize(union(contour, temp_poly))
+                """
             result['geom'] = contour
             result['crs'] = msk_zone
             result['geometry_type'] = geometry_type

@@ -16,12 +16,14 @@ FIELDS = {
             'cancel_date': {'name': 'cancel_date',
             'desc': 'Дата снятия с учета/регистрации',
             'type': 'timestamp with time zone'}, 
+            """
             'address': {'name': 'address',
             'desc': 'Адрес (местоположение)',
             'type': 'text'}, 
             'address_type': {'name': 'address_type',
             'desc': 'Тип адреса',
             'type': 'text'}, 
+            """
             'subtype': {'name': 'subtype',
             'desc': 'Подтип',
             'type': 'text'}, 

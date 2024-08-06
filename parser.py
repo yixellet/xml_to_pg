@@ -67,10 +67,13 @@ class Parser():
                       'name': self.FILE_TYPES[self.root.tag]['name'],
                       'date_formation': date.fromisoformat(PE.parse_details_statement(self.root)['date_formation'])}
             if self.root.tag == 'extract_cadastral_plan_territory':
-                quarter = Quarter(self.root)
-                quarter.parse()
-                result.update({
-                    'cad_number': quarter.data['cadastral_number']})
+                cad_blocks = self.root.find('cadastral_blocks')
+                if cad_blocks:
+                    for block in cad_blocks.findall('cadastral_block'):
+                        quarter = Quarter(block)
+                        quarter.parse()
+                    result.update({
+                        'cad_number': quarter.data['cad_number']})
             elif self.root.tag == 'extract_about_property_land':
                 object = self.root.find('land_record').find('object')
                 result.update({
