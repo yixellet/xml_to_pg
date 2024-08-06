@@ -11,14 +11,16 @@ def recursion(cur, conn, dirPath, schema):
             if os.path.splitext(item)[1] == '.xml':
                 with open(path, encoding="utf8") as f:
                     p = Parser(f)
-                    p.parse(cur, conn, schema)
+                    if p.getFileType():
+                        p.parse(cur, conn, schema)
 
         if is_zipfile(path):
             with ZipFile(path, "r") as zip:
                 for f in zip.infolist():
-                    if f.filename.split('.')[-1] == 'xml' :
+                    if f.filename.split('.')[-1] == 'xml':
                         with zip.open(f.filename, 'r') as xml_from_zip:
                             p = Parser(xml_from_zip)
-                            p.parse(cur, conn, schema)
+                            if p.getFileType():
+                                p.parse(cur, conn, schema)
         if os.path.isdir(path):
             recursion(path)

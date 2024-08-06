@@ -6,26 +6,34 @@ def insert_into_table(cur: cursor, conn: connection,
                       object: dict, schema: str) -> None:
     table_name = object['content'] + '__' + object['crs']
     object_desc = FIELDS[object['content']]
-    fields = []
-    set_fields = []
-    for field in object_desc['fields']:
-        fields.append(f"""\"{field['name']}\"""")
-        set_fields.append(f"""\"{field['name']}\" = EXCLUDED.\"{field['name']}\"""")
-    values = []
+
+    fields_ = []
+    set_fields_ = []
+    values_ = []
+
+    if object['crs'] != 'no_geometry':
+        fields_.append("geom")
+        set_fields_.append("geom = ST_GeomFromText(EXCLUDED.geom)")
+        values_.append(f"""ST_GeomFromText(\'{object['geom']}\')""")
+
     for key, value in object.items():
         if key in object_desc['fields']:
-            values.append(value)
+            fields_.append(f"""\"{key}\"""")
+            set_fields_.append(f"""\"{key}\" = EXCLUDED.\"{key}\"""")
+            if type(value) is int or type(value) is float or value == None:
+                values_.append(str(value))
+            else:
+                values_.append(f"""\'{str(value)}\'""")
     
-    print(object['geom'])
-    """
+    #print(object['cad_number'] or object['reg_numb_border'], object['geom'])
     cur.execute(
-        f""
-        INSERT INTO {schema}.{table_name} ({','.join(fields)}) 
-        VALUES ({','.join(values)}) 
+        f"""
+        INSERT INTO {schema}."{table_name}" as x ({','.join(fields_)}) 
+        VALUES ({','.join(values_)}) 
         ON CONFLICT ("{object_desc['unique']}") DO UPDATE 
-        SET {','.join(set_fields)}
-        WHERE date_formation < EXCLUDED.date_formation;
-        ""
+        SET {','.join(set_fields_)}
+        WHERE x.date_formation < EXCLUDED.date_formation;
+        """
     )
-    conn.commit()"""
+    conn.commit()
     #print('--- Таблицы заполнены ---')

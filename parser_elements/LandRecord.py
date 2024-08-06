@@ -56,8 +56,6 @@ class LandRecord():
             common_land_cad_number = common_land.find('common_land_cad_number')
             self.data['common_land_cad_number'] = \
                 common_land_cad_number.find('cad_number').text
-        else:
-            self.data['common_land_cad_number'] = None
         
         # Address location
         address_location = self.root_element.find('address_location')
@@ -88,50 +86,26 @@ class LandRecord():
         
         if a.find('inaccuracy') != None:
             self.data['area_inaccuracy'] = float(a.find('inaccuracy').text)
-        else:
-            self.data['area_inaccuracy'] = None
         
         if a.find('type') != None:
             self.data['area_type'] = PE.parse_dict(a.find('type'))
-        else:
-            self.data['area_type'] = None
 
         # Вид разрешенного использования
         if element.find('permitted_use') != None:
             pue = element.find('permitted_use').find('permitted_use_established')
             if pue.find('by_document') != None:
                 self.data['land_use_by_document'] = pue.find('by_document').text
-            else:
-                self.data['land_use_by_document'] = None
             if pue.find('land_use') != None:
                 self.data['land_use'] = dict(pue.find('land_use'))
-            else:
-                self.data['land_use'] = None
             if pue.find('land_use_mer') != None:
                 self.data['land_use_mer'] = dict(pue.find('land_use_mer'))
-            else:
-                self.data['land_use_mer'] = None
-        else:
-            self.data['land_use_by_document'] = None
-            self.data['land_use'] = None
-            self.data['land_use_mer'] = None
 
         # Вид разрешенного использования по градостроительному регламенту
         if element.find('permittes_uses_grad_reg') != None:
             pugr = element.find('permittes_uses_grad_reg')
             if pugr.find('reg_numb_border') != None:
                 self.data['gr_reg_numb_border'] = pugr.find('reg_numb_border').text
-            else:
-                self.data['gr_reg_numb_border'] = None
             if pugr.find('land_use') != None:
                 self.data['gr_land_use'] = dict(pugr.find('land_use'))
-            else:
-                self.data['gr_land_use'] = None
             if pugr.find('permitted_use_text') != None:
                 self.data['gr_permitted_use_text'] = pugr.find('permitted_use_text').text
-            else:
-                self.data['gr_permitted_use_text'] = None
-        else:
-            self.data['gr_reg_numb_border'] = None
-            self.data['gr_land_use'] = None
-            self.data['gr_permitted_use_text'] = None

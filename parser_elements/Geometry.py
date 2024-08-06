@@ -1,7 +1,7 @@
 from xml.etree.ElementTree import Element
 from typing import Union
 import re
-from shapely import Point, LineString, Polygon, MultiLineString, MultiPolygon, union
+from shapely import Point, LineString, Polygon, MultiLineString, MultiPolygon, union, normalize, to_wkt, geometry
 
 from constants.msk_zones import MSK_ZONES
 from constants.geometry_types import GEOMETRY_TYPES
@@ -119,7 +119,10 @@ class Geometry():
                 temp_result[geom_contour['crs']] = geom_contour
             else:
                 union(temp_result[geom_contour['crs']]['geom'], geom_contour['geom'])
-        return list(temp_result.values())
+        result = []
+        for value in temp_result.values():
+            result.append({'geom': to_wkt(value['geom']), 'crs': value['crs'], 'geometry_type': value['geometry_type']})
+        return result
 
     def extract_single_contour(self, 
                                root_element: Element = '', to_wgs: bool = False) -> \
@@ -143,38 +146,42 @@ class Geometry():
             root_element = self.root_element
 
         entity_spatial = root_element.find('entity_spatial')
-        msk_zone = ''
-        geometry_type = ''
+        msk_zone = 'no_geometry'
+        geometry_type = 'no_geometry'
         spatials_elements = entity_spatial.find('spatials_elements')
         if spatials_elements:
             contour = None
-            for se_idx, spatial_element \
+            for idx, spatial_element \
                     in enumerate(spatials_elements.findall('spatial_element')):
                 ords = spatial_element.find('ordinates')
-                ordinates_arr = []
+                shell = None
+                holes = None
+                points_arr = []
                 for ordinate in ords.findall('ordinate'):
                     nord = float(ordinate.find('x').text)
                     east = float(ordinate.find('y').text)
-                    ordinates_arr.append(Point(east, nord))
-                
-                geometry_type = self.define_geometry_type(ordinates_arr)
-                if se_idx == 0:
+                    points_arr.append(Point(east, nord))
+
+                if idx == 0:
+                    geometry_type = self.define_geometry_type(points_arr)
                     msk_zone = self.define_msk_zone(
-                        ordinates_arr[0], 
+                        points_arr[0], 
                         self.extract_sk_id(entity_spatial))
                     if geometry_type == GEOMETRY_TYPES[1]:
-                        contour = MultiLineString([LineString(ordinates_arr)])
+                        contour = MultiLineString([points_arr])
                     if geometry_type == GEOMETRY_TYPES[2]:
-                        contour = MultiPolygon([Polygon(ordinates_arr)])
+                        shell = Polygon(points_arr)
+                        contour = MultiPolygon([shell])
                 else:                
                     if geometry_type == GEOMETRY_TYPES[1]:
-                        contour = union(contour, LineString(ordinates_arr))
+                        contour = union(contour, LineString(points_arr))
                     if geometry_type == GEOMETRY_TYPES[2]:
-                        contour_part = Polygon(ordinates_arr)
-                        if contour_part.within(contour):
-                            contour = union(contour, Polygon(list(reversed(ordinates_arr))))
+                        contour_part = Polygon(points_arr)
+                        if contour_part.within(shell):
+                            holes.append(points_arr)
                         else:
-                            contour = union(contour, Polygon(ordinates_arr))
+                            temp_poly = Polygon(shell, holes)
+                            contour = normalize(union(contour, temp_poly))
             result['geom'] = contour
             result['crs'] = msk_zone
             result['geometry_type'] = geometry_type

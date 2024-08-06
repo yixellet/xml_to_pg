@@ -1,6 +1,7 @@
 from datetime import datetime
 from xml.etree.ElementTree import Element
 from typing import Union
+from json import dumps
 
 class ParserElements():
     """
@@ -24,7 +25,7 @@ class ParserElements():
         if data != None:
             return data.text
         else:
-            return None
+            return ''
 
     @classmethod
     def parse_common_data(self, root: Element) -> dict[str, str]:
@@ -54,8 +55,6 @@ class ParserElements():
         cancel_date = element.find('cancel_date')
         if cancel_date != None:
             result['cancel_date'] = datetime.fromisoformat(cancel_date.text)
-        else:
-            result['cancel_date'] = None
         
         dates_changes = element.find('dates_changes')
         if dates_changes:
@@ -87,20 +86,14 @@ class ParserElements():
         # Тип адреса
         if element.find('address_type') != None:
             obj['address_type'] = self.parse_dict(element.find('address_type'))
-        else:
-            obj['address_type'] = None
         
         # Адрес (местоположение)
         addr = element.find('address')
         ad = {}
         if addr.find('note') != None:
             ad['note'] = addr.find('note').text
-        else:
-            ad['note'] = None
         if addr.find('readable_address') != None:
             ad['readable_address'] = addr.find('readable_address').text
-        else:
-            ad['readable_address'] = None
         
         if addr.find('address_fias') != None:
             af = addr.find('address_fias')
@@ -108,88 +101,45 @@ class ParserElements():
             ls = af.find('level_settlement')
             if ls.find('fias') != None:
                 afobj['objectid'] = ls.find('fias').text
-            else:
-                afobj['objectid'] = None
             if ls.find('okato') != None:
                 afobj['okato'] = ls.find('okato').text
-            else:
-                afobj['okato'] = None
             if ls.find('kladr') != None:
                 afobj['kladr'] = ls.find('kladr').text
-            else:
-                afobj['kladr'] = None
             if ls.find('oktmo') != None:
                 afobj['oktmo'] = ls.find('oktmo').text
-            else:
-                afobj['oktmo'] = None
             if ls.find('postal_code') != None:
                 afobj['postal_code'] = ls.find('postal_code').text
-            else:
-                afobj['postal_code'] = None
             if ls.find('region') != None:
                 afobj['region'] = ls.find('region').text
-            else:
-                afobj['region'] = None
             if ls.find('district') != None:
                 afobj['district'] = self.getAddressPart(ls, 'district')
-            else:
-                afobj['district'] = None
             if ls.find('city') != None:
                 afobj['city'] = self.getAddressPart(ls, 'city')
-            else:
-                afobj['city'] = None
             if ls.find('urban_district') != None:
                 afobj['urban_district'] = self.getAddressPart(ls, 'urban_district')
-            else:
-                afobj['urban_district'] = None
             if ls.find('soviet_village') != None:
                 afobj['soviet_village'] = self.getAddressPart(ls, 'soviet_village')
-            else:
-                afobj['soviet_village'] = None
             if ls.find('locality') != None:
                 afobj['locality'] = self.getAddressPart(ls, 'locality')
-            else:
-                afobj['locality'] = None
             
             if af.find('detailed_level') != None:
                 dl = af.find('detailed_level')
                 if dl.find('street') != None:
                     afobj['street'] = self.getAddressPart(dl, 'street')
-                else:
-                    afobj['street'] = None
                 if dl.find('Level1') != None:
                     afobj['Level1'] = self.getAddressPart(dl, 'Level1')
-                else:
-                    afobj['Level1'] = None
                 if dl.find('Level2') != None:
                     afobj['Level2'] = self.getAddressPart(dl, 'Level2')
-                else:
-                    afobj['Level2'] = None
                 if dl.find('Level3') != None:
                     afobj['Level3'] = self.getAddressPart(dl, 'Level3')
-                else:
-                    afobj['Level3'] = None
                 if dl.find('apartment') != None:
                     afobj['apartment'] = self.getAddressPart(dl, 'apartment')
-                else:
-                    afobj['apartment'] = None
                 if dl.find('other') != None:
                     afobj['other'] = dl.find('other').text
-                else:
-                    afobj['other'] = None
-            else:
-                afobj['street'] = None
-                afobj['Level1'] = None
-                afobj['Level2'] = None
-                afobj['Level3'] = None
-                afobj['apartment'] = None
-                afobj['other'] = None
 
             ad['address_fias'] = afobj
-        else:
-            ad['address_fias'] = None
 
-        obj['address'] = str(ad)
+        obj['address'] = dumps(ad)
 
         # Местоположение относительно ориентира
         if element.find('rel_position') != None:
@@ -197,19 +147,11 @@ class ParserElements():
             objj = {}
             if rp.find('in_boundaries_mark') != None:
                 objj['in_boundaries_mark'] = rp.find('in_boundaries_mark').text
-            else:
-                objj['in_boundaries_mark'] = None
             if rp.find('ref_point_name') != None:
                 objj['ref_point_name'] = rp.find('ref_point_name').text
-            else:
-                objj['ref_point_name'] = None
             if rp.find('location_description') != None:
                 objj['location_description'] = rp.find('location_description').text
-            else:
-                objj['location_description'] = None
-            obj['rel_position'] = str(objj)
-        else:
-            obj['rel_position'] = None
+            obj['rel_position'] = dumps(objj)
 
         return obj
 
@@ -224,16 +166,11 @@ class ParserElements():
         gtr = ds.find('group_top_requisites')
         if gtr.find('registration_number') != None:
             result['registration_number'] = gtr.find('registration_number').text
-        else:
-            result['registration_number'] = None
         result['date_formation'] = gtr.find('date_formation').text
 
         # "Низшие реквизиты" - должность и имя регистратора
         if ds.find('group_lower_requisites') != None:
             result['position'] = ds.find('group_lower_requisites').find('full_name_position').text
             result['name'] = ds.find('group_lower_requisites').find('initials_surname').text
-        else:
-            result['full_name_position'] = None
-            result['initials_surname'] = None
         
         return result

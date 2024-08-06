@@ -11,6 +11,6 @@ with psycopg.connect(
             .format(dbname=DB_NAME, dbuser=DB_USER, dbpassword=DB_PASSWORD, dbhost=DB_HOST, dbport=DB_PORT)
         ) as conn:
     with conn.cursor() as cur:
-        #create_schema(cur, conn, DB_SCHEMA)
-        #create_tables(cur, conn, DB_SCHEMA)
+        create_schema(cur, conn, DB_SCHEMA)
+        create_tables(cur, conn, DB_SCHEMA)
         recursion(cur, conn, XML_DIRECTORY, DB_SCHEMA)
