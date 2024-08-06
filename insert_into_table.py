@@ -28,4 +28,4 @@ def insert_into_table(cur: cursor, conn: connection,
         ""
     )
     conn.commit()"""
-    print('--- Таблицы заполнены ---')
+    #print('--- Таблицы заполнены ---')
