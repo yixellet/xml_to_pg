@@ -85,20 +85,24 @@ class Parser():
         details = PE.parse_details_statement(self.root)
         result.update(details)
         if self.root.tag == 'extract_about_property_land':
-            record= LandRecord(self.root.tag.find('land_record'))
+            record = LandRecord(self.root.find('land_record'))
             record.parse()
-            data = record.data
-            data.update(details)
-            insert_into_table(cur, conn, result, schema)
+            attributes = record.data
+            attributes.update(details)
+            for geom in record.geometry:
+                geom.update(attributes)
+                insert_into_table(cur, conn, geom, schema)
         if self.root.tag == 'extract_about_zone':
             ztcs = self.root.find('zone_territory_coastline_surveying')
             z_and_t = ztcs.find('zones_and_territories')
             if z_and_t:
                 record= Zone(z_and_t)
                 record.parse()
-                data = record.data
-                data.update(details)
-                insert_into_table(cur, conn, result, schema)
+                attributes = record.data
+                attributes.update(details)
+                for geom in record.geometry:
+                    geom.update(attributes)
+                    insert_into_table(cur, conn, geom, schema)
         if self.root.tag == 'extract_cadastral_plan_territory':
             cad_blocks = self.root.find('cadastral_blocks')
             if cad_blocks:
@@ -115,14 +119,18 @@ class Parser():
                             for land_record in land_records:
                                 record = LandRecord(land_record)
                                 record.parse()
-                                data = record.data
-                                data.update(details)
-                                insert_into_table(cur, conn, data, schema)
+                                attributes = record.data
+                                attributes.update(details)
+                                for geom in record.geometry:
+                                    geom.update(attributes)
+                                    insert_into_table(cur, conn, geom, schema)
                     zones = block.find('zones_and_territories_boundaries')
                     if zones:
                         for zone in zones.findall('zones_and_territories_record'):
                             record = Zone(zone, 'extract_cadastral_plan_territory')
                             record.parse()
-                            data = record.data
-                            data.update(details)
-                            insert_into_table(cur, conn, data, schema)
+                            attributes = record.data
+                            attributes.update(details)
+                            for geom in record.geometry:
+                                geom.update(attributes)
+                                insert_into_table(cur, conn, geom, schema)

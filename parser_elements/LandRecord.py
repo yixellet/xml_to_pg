@@ -15,6 +15,7 @@ class LandRecord():
         self.data = {
             'content': self.OBJECT_TYPE
         }
+        self.geometry = None
     
     def parse(self):
         """
@@ -46,16 +47,18 @@ class LandRecord():
         self.data.update(PE.parse_common_data(object))
         subtype = object.find('subtype')
         if subtype:
-            self.data['subtype'] = PE.parse_dict(object.find('subtype'))
+            self.data['subtype'] = PE.parse_dict(subtype)
         self.parse_params()
 
         # Cad links
         cad_links = self.root_element.find('cad_links')
         if cad_links:
             common_land = cad_links.find('common_land')
-            common_land_cad_number = common_land.find('common_land_cad_number')
-            self.data['common_land_cad_number'] = \
-                common_land_cad_number.find('cad_number').text
+            if common_land:
+                common_land_cad_number = common_land.find('common_land_cad_number')
+                if common_land_cad_number:
+                    self.data['common_land_cad_number'] = \
+                        common_land_cad_number.find('cad_number').text
         
         # Address location
         address_location = self.root_element.find('address_location')
@@ -68,8 +71,8 @@ class LandRecord():
                             self.OBJECT_TYPE,
                             self.data['cad_number'])
     
-        contour = geometry.extract_geometry()[0]
-        self.data.update(contour)
+        contour = geometry.extract_geometry()
+        self.geometry = contour
     
     def parse_params(self) -> None:
         """Параметры земельного участка"""

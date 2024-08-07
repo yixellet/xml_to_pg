@@ -17,6 +17,7 @@ class Zone():
         self.data = {
             'content': self.OBJECT_TYPE
         }
+        self.geometry = None
         match self.root_tag:
             case 'extract_cadastral_plan_territory':
                 self.contours_tag = 'b_contours_location'
@@ -59,9 +60,8 @@ class Zone():
         geometry = Geometry(self.root_element.find(self.contours_tag),
                             self.OBJECT_TYPE,
                             self.data['reg_numb_border'])
-        # logMessage(str(geometry.extract_geometry()))
-        contour = geometry.extract_geometry()[0]
-        self.data.update(contour)
+        contour = geometry.extract_geometry()
+        self.geometry = contour
     
     def parse_b_object(self, element: Element) -> None:
         """Извлекает значения полей reg_numb_border и type_boundary

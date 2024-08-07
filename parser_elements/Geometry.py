@@ -1,7 +1,7 @@
 from xml.etree.ElementTree import Element
 from typing import Union
 import re
-from shapely import Point, LineString, Polygon, MultiLineString, MultiPolygon, union, normalize, to_wkt, geometry, make_valid
+from shapely import Point, LineString, Polygon, MultiLineString, MultiPolygon, union, normalize, to_wkt, geometry, make_valid, prepare, within, LinearRing
 
 from constants.msk_zones import MSK_ZONES
 from constants.geometry_types import GEOMETRY_TYPES
@@ -103,26 +103,37 @@ class Geometry():
         'msk_zone': <зона МСК-30 (1 или 2)>}
         :rtype: list 
         """
+        self.null_result = {'geom': None, 'crs': 'no_geometry', 'geometry_type': 'no_geometry'}
         if self.root_element == None:
-            msk_zone = self.define_msk_zone()
-            geometry_type = self.define_geometry_type()
-            null_result = [
-                {'geom': None, 'crs': msk_zone, 'geometry_type': geometry_type}]
-            return null_result
+            
+            return [self.null_result]
 
         temp_result = {}
+        result = []
+        geometry_type = None
 
         contours = self.root_element.find('contours')
         for contour in contours.findall('contour'):
-            geom_contour = self.extract_single_contour(contour)
-            if geom_contour['crs'] not in temp_result:
-                temp_result[geom_contour['crs']] = geom_contour
+            geom_contour = self.extract_single_contour_(contour)
+            geometry_type = geom_contour['geometry_type']
+            if geometry_type == 'no_geometry':
+                result.append(self.null_result)
             else:
-                temp_result[geom_contour['crs']]['geom'].union(geom_contour['geom'])
-        result = []
-        for value in temp_result.values():
-            result.append({'geom': to_wkt(make_valid(value['geom'])), 'crs': value['crs'], 'geometry_type': value['geometry_type']})
-        print(result)
+                if geom_contour['crs'] not in temp_result:
+                    temp_result[geom_contour['crs']] = [geom_contour['geom']]
+                else:
+                    temp_result[geom_contour['crs']].append(geom_contour['geom'])
+        for key, value in temp_result.items():
+            geom = []
+            for contour in value:
+                for element in contour.geoms:
+                    geom.append(element)
+            if geometry_type == GEOMETRY_TYPES[1]:
+                result.append({'crs': key, 'geom': MultiLineString(geom)})
+            if geometry_type == GEOMETRY_TYPES[2]:
+                result.append({'crs': key, 'geom': MultiPolygon(geom)})
+        
+        # print(result)
         return result
 
     def extract_single_contour(self, 
@@ -150,8 +161,9 @@ class Geometry():
         msk_zone = 'no_geometry'
         geometry_type = 'no_geometry'
         spatials_elements = entity_spatial.find('spatials_elements')
-        if spatials_elements:
+        if spatials_elements and self.cad_number == '30:12-7.1':
             contour = None
+            contour_parts = []
             shell = None
             shell_points = None
             holes = []
@@ -182,44 +194,57 @@ class Geometry():
                         shell = poly_part
                         shell_points = points_arr
                     else:
-                        if poly_part.within(shell):
-                            holes.append(points_arr)
+                        prepare(poly_part)
+                        if within(poly_part, shell):
+                            holes.append(LinearRing(points_arr))
                         else:
                             spatial_element = Polygon(shell_points, holes)
                             shell = poly_part
                             shell_points = points_arr
                             holes.clear()
                             if contour == None:
-                                contour = MultiPolygon([spatial_element])
+                                contour_parts.append(spatial_element)
                             else:
-                                contour.union(spatial_element)
+                                contour = MultiPolygon(contour_parts)
             if contour == None:
-                contour = MultiPolygon([shell])
-                """
-                if idx == 0:
-                    geometry_type = self.define_geometry_type(points_arr)
-                    msk_zone = self.define_msk_zone(
-                        points_arr[0], 
-                        self.extract_sk_id(entity_spatial))
-                    if geometry_type == GEOMETRY_TYPES[1]:
-                        contour = MultiLineString(LineString(points_arr))
-                    if geometry_type == GEOMETRY_TYPES[2]:
-                        shell = Polygon(points_arr)
-                        contour = MultiPolygon([shell])
-                else:                
-                    if geometry_type == GEOMETRY_TYPES[1]:
-                        contour = union(contour, LineString(points_arr))
-                    if geometry_type == GEOMETRY_TYPES[2]:
-                        contour_part = Polygon(points_arr)
-                        if contour_part.within(shell):
-                            holes.append(points_arr)
-                        else:
-                            temp_poly = Polygon(shell, holes)
-                            contour = normalize(union(contour, temp_poly))
-                """
+                contour_parts.append(Polygon(shell))
+                contour = MultiPolygon(contour_parts)
             result['geom'] = contour
             result['crs'] = msk_zone
             result['geometry_type'] = geometry_type
         else:
             result = {'geom': None, 'crs': msk_zone, 'geometry_type': geometry_type}
+        if self.cad_number == '30:12-7.1':
+            print(result['geom'])
         return result
+
+    def extract_single_contour_(self, 
+                               root_element: Element = '', to_wgs: bool = False) -> \
+        dict[str, Union[str, MultiLineString, MultiPolygon]]:
+        """
+        Извлекает геометрическую информацию из одного конкретного контура
+        (элемент contour или spatial_data)
+        
+        :param root_element: Элемент XML документа, корневой для геометрии, 
+        элементы типа contour и spatial_data
+        :type root_element: Element
+        :param to_wgs: Флаг, определяющий необходимость пересчета координат
+        в WGS-84, defaults to False
+        :type to_wgs: bool, optional
+        :return: Словарь {'geom': QgsGeometry, 'crs': str}
+        :rtype: dict
+        """
+        if self.object_type == 'quarters':
+            root_element = self.root_element
+        entity_spatial = root_element.find('entity_spatial')
+        spatials_elements = entity_spatial.find('spatials_elements')
+        if spatials_elements:
+            spatials_elements_array = spatials_elements.findall('spatial_element')
+            for i in range(len(spatials_elements_array)):
+                ordinates = spatial_element.find('ordinates')
+                points_arr = []
+                for ordinate in ordinates.findall('ordinate'):
+                    points_arr.append(
+                        Point(float(ordinate.find('y').text), 
+                              float(ordinate.find('x').text)))
+                

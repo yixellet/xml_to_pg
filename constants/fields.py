@@ -16,14 +16,6 @@ FIELDS = {
             'cancel_date': {'name': 'cancel_date',
             'desc': 'Дата снятия с учета/регистрации',
             'type': 'timestamp with time zone'}, 
-            """
-            'address': {'name': 'address',
-            'desc': 'Адрес (местоположение)',
-            'type': 'text'}, 
-            'address_type': {'name': 'address_type',
-            'desc': 'Тип адреса',
-            'type': 'text'}, 
-            """
             'subtype': {'name': 'subtype',
             'desc': 'Подтип',
             'type': 'text'}, 
@@ -53,6 +45,9 @@ FIELDS = {
             'type': 'text'}, 
             'land_use_mer': {'name': 'land_use_mer',
             'desc': 'Вид разрешенного использования земельного участка в соответствии с классификатором',
+            'type': 'text'}, 
+            'category': {'name': 'category',
+            'desc': 'Категория земель',
             'type': 'text'}
         }
     },
@@ -128,6 +123,9 @@ FIELDS = {
             'type': 'timestamp with time zone'}, 
             'name_by_doc': {'name': 'name_by_doc',
             'desc': 'Наименование по документу',
+            'type': 'text'}, 
+            'name_by_pkk': {'name': 'name_by_pkk',
+            'desc': 'Наименование по ПКК',
             'type': 'text'}
         }
     },
