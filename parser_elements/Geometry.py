@@ -70,8 +70,8 @@ class Geometry():
         region_code = cad_number_splitted[0]    # '30'
         # TODO: Разработать алгоритм определения МСК других субъектов
         if point:
-            east = point.x
-            nord = point.y
+            east = point[0]
+            nord = point[1]
             return region_code + '.' + str(east)[0]
         return 'no_geometry'
 
@@ -91,7 +91,7 @@ class Geometry():
         
         return None
 
-    def extract_geometry(self, to_wgs: bool = False) -> \
+    def extract_geometry_(self, to_wgs: bool = False) -> \
         list[dict[str, Union[MultiLineString, MultiPolygon, None]]]:
         """Извлекает геометрию, преобразует координаты
         
@@ -136,7 +136,7 @@ class Geometry():
         # print(result)
         return result
 
-    def extract_single_contour(self, 
+    def extract_single_contour_(self, 
                                root_element: Element = '', to_wgs: bool = False) -> \
         dict[str, Union[str, MultiLineString, MultiPolygon]]:
         """
@@ -218,8 +218,10 @@ class Geometry():
             print(result['geom'])
         return result
 
-    def extract_single_contour_(self, 
-                               root_element: Element = '', to_wgs: bool = False) -> \
+    def extract_single_contour(self, 
+                               root_element: Element = None, 
+                               contours_count: int = 1,
+                               to_wgs: bool = False) -> \
         dict[str, Union[str, MultiLineString, MultiPolygon]]:
         """
         Извлекает геометрическую информацию из одного конкретного контура
@@ -240,11 +242,87 @@ class Geometry():
         spatials_elements = entity_spatial.find('spatials_elements')
         if spatials_elements:
             spatials_elements_array = spatials_elements.findall('spatial_element')
+            first_spatial_element = []  # [ (x, y), (x,y), ... ]
+            other_spatial_elements = [] # [ ( (x, y), (x,y), ... ), ... ]
             for i in range(len(spatials_elements_array)):
-                ordinates = spatial_element.find('ordinates')
+                ordinates = spatials_elements_array[i].find('ordinates')
                 points_arr = []
                 for ordinate in ordinates.findall('ordinate'):
                     points_arr.append(
-                        Point(float(ordinate.find('y').text), 
-                              float(ordinate.find('x').text)))
-                
+                            (float(ordinate.find('y').text), 
+                             float(ordinate.find('x').text)))
+                if i == 0:
+                    first_spatial_element += points_arr
+                    geometry_type = self.define_geometry_type(points_arr)
+                    msk_zone = self.define_msk_zone(
+                        points_arr[0], 
+                        self.extract_sk_id(entity_spatial))
+                else:
+                    other_spatial_elements.append(tuple(points_arr))
+            if contours_count > 1:
+                contour_geometry = [(tuple(first_spatial_element), other_spatial_elements)]
+            else:
+                if self.object_type == 'quarters':
+                    contour_geometry = MultiPolygon([(tuple(first_spatial_element), other_spatial_elements)])
+                else:
+                    if len(other_spatial_elements) != 0:
+                        first_geom = Polygon(first_spatial_element)
+                        second_geom = Polygon(other_spatial_elements[0])
+                        prepare(second_geom)
+                        is_hole = within(second_geom, first_geom)
+                        if is_hole:
+                            contour_geometry = [(tuple(first_spatial_element), other_spatial_elements)]
+                        else:
+                            contour_geometry = [(tuple(first_spatial_element), [])]
+                            for element in other_spatial_elements:
+                                contour_geometry.append((element, []))
+                            #print(contour_geometry)
+                    else:
+                        contour_geometry = [(tuple(first_spatial_element), other_spatial_elements)]
+            return {
+                'geom': contour_geometry, 
+                'crs': msk_zone, 
+                'geometry_type': geometry_type}
+        else:
+            return {
+                'geom': None, 
+                'crs': 'no_geometry', 
+                'geometry_type': 'no_geometry'}
+
+    def extract_geometry(self, to_wgs: bool = False) -> \
+        list[dict[str, Union[MultiLineString, MultiPolygon, None]]]:
+        """Извлекает геометрию, преобразует координаты
+        
+        :param to_wgs: Флаг, указывающий на необходимость преобразования
+        геометрии в систему координат WGS-84, defaults to False
+        :type to_wgs: bool, optional
+
+        :returns: Возвращает список словарей формата {'geom': <QgsGeometry>,
+        'msk_zone': <зона МСК-30 (1 или 2)>}
+        :rtype: list 
+        """
+        self.null_result = {'geom': None, 'crs': 'no_geometry', 'geometry_type': 'no_geometry'}
+        if self.root_element == None:
+            
+            return [self.null_result]
+
+        temp_result = {}
+        result = []
+        geometry_type = None
+
+        contours = self.root_element.find('contours')
+        contours_array = contours.findall('contour')
+        for contour in contours_array:
+            geom_contour = self.extract_single_contour(contour, len(contours_array))
+            geometry_type = geom_contour['geometry_type']
+            if geometry_type == 'no_geometry':
+                result.append(self.null_result)
+            else:
+                if geom_contour['crs'] not in temp_result:
+                    temp_result[geom_contour['crs']] = geom_contour['geom']
+                else:
+                    temp_result[geom_contour['crs']].append(geom_contour['geom'][0])
+        
+        for key, value in temp_result.items():
+            result.append({'crs': key, 'geom': MultiPolygon(value)})
+        return result

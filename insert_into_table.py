@@ -27,18 +27,16 @@ def insert_into_table(cur: cursor, conn: connection,
             else:
                 string = re.sub(r'[\'\"]', ' ', str(value))
                 values_.append(f"""\'{string}\'""")
-    """if object['cad_number'] == '30:08:110107:104':
-        print(object)
-        
-        print(
-            f""
-            INSERT INTO {schema}."{table_name}" as x ({','.join(fields_)}) 
-            VALUES ({','.join(values_)}) 
-            ON CONFLICT ("{object_desc['unique']}") DO UPDATE
-            SET {','.join(set_fields_)}
-            WHERE x."date_formation" < EXCLUDED."date_formation";
-            ""
-        )"""
+    """
+    print(
+        f""
+        INSERT INTO {schema}."{table_name}" as x ({','.join(fields_)}) 
+        VALUES ({','.join(values_)}) 
+        ON CONFLICT ("{object_desc['unique']}") DO UPDATE
+        SET {','.join(set_fields_)}
+        WHERE x."date_formation" < EXCLUDED."date_formation";
+        ""
+    )"""
     cur.execute(
         f"""
         INSERT INTO {schema}."{table_name}" as x ({','.join(fields_)}) 
