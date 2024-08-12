@@ -266,6 +266,7 @@ class Geometry():
                     contour_geometry = MultiPolygon([(tuple(first_spatial_element), other_spatial_elements)])
                 else:
                     if len(other_spatial_elements) != 0:
+                        """
                         first_geom = Polygon(first_spatial_element)
                         second_geom = Polygon(other_spatial_elements[0])
                         prepare(second_geom)
@@ -277,6 +278,30 @@ class Geometry():
                             for element in other_spatial_elements:
                                 contour_geometry.append((element, []))
                             #print(contour_geometry)
+                        """
+                        result = {}
+                        parts_count = 1
+                        current_shell = first_spatial_element
+                        for other_element in other_spatial_elements:
+                            shell_poly = Polygon(current_shell)
+                            checking_poly = Polygon(other_element)
+                            prepare(checking_poly)
+                            is_hole = within(checking_poly, shell_poly)
+                            if is_hole:
+                                if parts_count not in result:
+                                    result[parts_count] = [current_shell, [other_element]]
+                                else:
+                                    result[parts_count][1].append(other_element)
+                            else:
+                                parts_count += 1
+                                current_shell = other_element
+                                result[parts_count] = [current_shell, []]
+                        contour_geometry = []
+                        for g in result.values():
+                            contour_geometry.append((tuple(g[0]), g[1]))
+                        if self.cad_number == '30:12-7.108':
+                            #print(contour_geometry)
+                            pass
                     else:
                         contour_geometry = [(tuple(first_spatial_element), other_spatial_elements)]
             return {

@@ -92,6 +92,14 @@ class Parser():
             for geom in record.geometry:
                 geom.update(attributes)
                 insert_into_table(cur, conn, geom, schema)
+        if self.root.tag == 'extract_about_boundary':
+            record = LandRecord(self.root.find('boundary_record'))
+            record.parse()
+            attributes = record.data
+            attributes.update(details)
+            for geom in record.geometry:
+                geom.update(attributes)
+                insert_into_table(cur, conn, geom, schema)
         if self.root.tag == 'extract_about_zone':
             ztcs = self.root.find('zone_territory_coastline_surveying')
             z_and_t = ztcs.find('zones_and_territories')

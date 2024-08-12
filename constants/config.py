@@ -1,4 +1,4 @@
-
+"""
 DB_HOST = '172.17.13.6'
 DB_PORT = 5432
 DB_USER = 'admin'
@@ -16,5 +16,4 @@ DB_PASSWORD = '07071907'
 DB_NAME = 'postgres'
 DB_SCHEMA ='egrn'
 XML_DIRECTORY = '/mnt/hdd/kpt'
-#XML_DIRECTORY = '/home/owgrant/Рабочий стол'
-"""
+# XML_DIRECTORY = '/home/owgrant/Рабочий стол'
