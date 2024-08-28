@@ -27,17 +27,8 @@ def insert_into_table(cur: cursor, conn: connection,
             else:
                 string = re.sub(r'[\'\"]', ' ', str(value))
                 values_.append(f"""\'{string}\'""")
-    """
+    
     print(
-        f""
-        INSERT INTO {schema}."{table_name}" as x ({','.join(fields_)}) 
-        VALUES ({','.join(values_)}) 
-        ON CONFLICT ("{object_desc['unique']}") DO UPDATE
-        SET {','.join(set_fields_)}
-        WHERE x."date_formation" < EXCLUDED."date_formation";
-        ""
-    )"""
-    cur.execute(
         f"""
         INSERT INTO {schema}."{table_name}" as x ({','.join(fields_)}) 
         VALUES ({','.join(values_)}) 
@@ -46,5 +37,15 @@ def insert_into_table(cur: cursor, conn: connection,
         WHERE x."date_formation" < EXCLUDED."date_formation";
         """
     )
+    """
+    cur.execute(
+        f""
+        INSERT INTO {schema}."{table_name}" as x ({','.join(fields_)}) 
+        VALUES ({','.join(values_)}) 
+        ON CONFLICT ("{object_desc['unique']}") DO UPDATE
+        SET {','.join(set_fields_)}
+        WHERE x."date_formation" < EXCLUDED."date_formation";
+        ""
+    )"""
     conn.commit()
     #print('--- Таблицы заполнены ---')
